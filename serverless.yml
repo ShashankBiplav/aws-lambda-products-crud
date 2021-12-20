@@ -1,0 +1,82 @@
+org: shashankbiplav
+app: products-crud
+service: products-crud
+frameworkVersion: "2 || 3"
+
+provider:
+  name: aws
+  runtime: nodejs12.x
+  lambdaHashingVersion: 20201221
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - "dynamodb:PutItem"
+            - "dynamodb:GetItem"
+            - "dynamodb:DeleteItem"
+            - "dynamodb:Scan"
+          Resource:
+            - { "Fn::GetAtt": ["ProductsTable", "Arn"] }
+
+functions:
+  getProduct:
+    handler: src/handlers.getProduct
+    events:
+      - httpApi:
+          path: /product/{productID}
+          method: get
+
+  createProduct:
+    handler: src/handlers.createProduct
+    events:
+      - httpApi:
+          path: /product
+          method: post
+
+  updateProduct:
+    handler: src/handlers.updateProduct
+    events:
+      - httpApi:
+          path: /product/{id}
+          method: put
+
+  deleteProduct:
+    handler: src/handlers.deleteProduct
+    events:
+      - httpApi:
+          path: /product/{id}
+          method: delete
+
+  listProduct:
+    handler: src/handlers.listAllProducts
+    events:
+      - httpApi:
+          path: /products
+          method: get
+
+plugins:
+  - serverless-plugin-typescript
+
+resources:
+  Resources:
+    ProductsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        # ProvisionedThroughput:
+        #   ReadCapacityUnits:1
+        #   WriteCapacityUnits:1
+        AttributeDefinitions:
+          - AttributeName: productID
+            AttributeType: S
+          - AttributeName: category
+            AttributeType: S
+
+        KeySchema:
+          - AttributeName: productID
+            KeyType: HASH
+          - AttributeName: category
+            KeyType: RANGE
+
+        BillingMode: PAY_PER_REQUEST
+        TableName: ProductsTable
