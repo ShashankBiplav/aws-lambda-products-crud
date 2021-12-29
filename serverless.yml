@@ -36,6 +36,10 @@ functions:
       - httpApi:
           path: /product/{productID}
           method: get
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId:
+              Ref: ApiGatewayAuthorizer
 
   createProduct:
     handler: src/handlers.createProduct
@@ -43,6 +47,10 @@ functions:
       - httpApi:
           path: /product
           method: post
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId:
+              Ref: ApiGatewayAuthorizer
 
   updateProduct:
     handler: src/handlers.updateProduct
@@ -50,6 +58,10 @@ functions:
       - httpApi:
           path: /product/{id}
           method: put
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId:
+              Ref: ApiGatewayAuthorizer
 
   deleteProduct:
     handler: src/handlers.deleteProduct
@@ -57,6 +69,10 @@ functions:
       - httpApi:
           path: /product/{id}
           method: delete
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId:
+              Ref: ApiGatewayAuthorizer
 
   listProduct:
     handler: src/handlers.listAllProducts
@@ -64,6 +80,10 @@ functions:
       - httpApi:
           path: /products
           method: get
+          authorizer:
+            type: COGNITO_USER_POOLS
+            authorizerId:
+              Ref: ApiGatewayAuthorizer
 
 plugins:
   - serverless-plugin-typescript
@@ -95,6 +115,13 @@ resources:
           - email
         AutoVerifiedAttributes:
           - email
+        Policies:
+          PasswordPolicy:
+            MinimumLength: 6
+            RequireLowercase: False
+            RequireNumbers: True
+            RequireSymbols: False
+            RequireUppercase: True
 
     CognitoUserPoolClient:
       Type: AWS::Cognito::UserPoolClient
@@ -105,3 +132,44 @@ resources:
         ExplicitAuthFlows:
           - ADMIN_NO_SRP_AUTH
         GenerateSecret: false
+
+    CognitoIdentityPool:
+      Type: AWS::Cognito::IdentityPool
+      Properties:
+        # Generate a name based on the stage
+        IdentityPoolName: ${self:provider.stage}-identity-pool
+        # Don't allow unathenticated users
+        AllowUnauthenticatedIdentities: false
+        # Link to our User Pool
+        CognitoIdentityProviders:
+          - ClientId:
+              Ref: CognitoUserPoolClient
+            ProviderName:
+              Fn::GetAtt: ["CognitoUserPool", "ProviderName"]
+
+      ApiGatewayAuthorizer:
+        DependsOn:
+          - ApiGatewayRestApi
+        Type: AWS::ApiGateway::Authorizer
+        Properties:
+          Name: cognito-authorizer
+          IdentitySource: method.request.header.Authorization
+          RestApiId:
+            Ref: ApiGatewayRestApi
+          Type: COGNITO_USER_POOLS
+          ProviderARNs:
+            - Fn::GetAtt: ["CognitoUserPool", "ProviderName"]
+
+# Print out the Id of the User Pool that is created
+outputs:
+  UserPoolId:
+    Value:
+      Ref: CognitoUserPool
+
+  UserPoolClientId:
+    Value:
+      Ref: CognitoUserPoolClient
+
+  IdentityPoolId:
+    Value:
+      Ref: CognitoIdentityPool
