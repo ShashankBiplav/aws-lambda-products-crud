@@ -27,6 +27,8 @@ class HttpError extends Error {
 
 //helper: fetching a product using its productID
 const fetchProductById = async (id: string) => {
+  console.log(id);
+  console.log(typeof id);
   const output = await docClient
     .get({
       TableName: tableName,
@@ -35,9 +37,10 @@ const fetchProductById = async (id: string) => {
       },
     })
     .promise();
+  console.log(output.Item);
 
   if (!output.Item) {
-    throw new HttpError(404, { error: "not found" });
+    return new HttpError(404, { error: "not found" });
   }
 
   return output.Item;
